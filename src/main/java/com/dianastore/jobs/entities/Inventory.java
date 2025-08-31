@@ -26,7 +26,7 @@ public class Inventory {
     private Integer stock;
 
     @Column(name = "is_disabled")
-    private Boolean isDisabled = false;
+    private int isDisabled = 0;
 
     @Column(name = "feed_id")
     private Long feedId;
@@ -86,11 +86,11 @@ public class Inventory {
         this.stock = stock;
     }
 
-    public Boolean getIsDisabled() {
+    public Integer getIsDisabled() {
         return isDisabled;
     }
 
-    public void setIsDisabled(Boolean isDisabled) {
+    public void setIsDisabled(Integer isDisabled) {
         this.isDisabled = isDisabled;
     }
 

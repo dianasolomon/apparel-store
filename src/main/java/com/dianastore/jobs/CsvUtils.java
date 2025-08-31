@@ -84,16 +84,5 @@ public final class CsvUtils {
         }
     }
 
-    /**
-     * Boolean parsing (null-safe). Accepts true/false, 1/0, yes/no.
-     * Returns null if unknown/blank.
-     */
-    public static Boolean parseBoolean(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        String v = raw.trim().toLowerCase();
-        if (v.equals("true") || v.equals("1") || v.equals("yes") || v.equals("y")) return Boolean.TRUE;
-        if (v.equals("false") || v.equals("0") || v.equals("no") || v.equals("n")) return Boolean.FALSE;
-        System.err.println("⚠️ Failed to parse boolean: " + raw);
-        return null;
-    }
+
 }

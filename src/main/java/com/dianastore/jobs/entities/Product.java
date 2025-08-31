@@ -56,8 +56,6 @@ public class Product {
     @Column(name = "feed_id")
     private Long feedId;
 
-    @Column(name = "marked_for_delete")
-    private Boolean markedForDelete = false;
 
     // --- Getters & Setters ---
 
@@ -195,14 +193,6 @@ public class Product {
 
     public void setFeedId(Long feedId) {
         this.feedId = feedId;
-    }
-
-    public Boolean getMarkedForDelete() {
-        return markedForDelete;
-    }
-
-    public void setMarkedForDelete(Boolean markedForDelete) {
-        this.markedForDelete = markedForDelete;
     }
 
     // equals/hashCode based on unique business key (countryCode + sku)
