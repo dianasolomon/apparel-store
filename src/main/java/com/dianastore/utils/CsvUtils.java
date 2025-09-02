@@ -1,4 +1,4 @@
-package com.dianastore.jobs;
+package com.dianastore.utils;
 
 import java.sql.Timestamp;
 import java.time.Instant;

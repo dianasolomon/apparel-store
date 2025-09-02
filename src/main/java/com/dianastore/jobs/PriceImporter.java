@@ -1,6 +1,6 @@
 package com.dianastore.jobs;
 
-import com.dianastore.jobs.repository.PriceRepository;
+import com.dianastore.repository.PriceRepository;
 import com.opencsv.CSVReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package com.dianastore.jobs;
+package com.dianastore;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
