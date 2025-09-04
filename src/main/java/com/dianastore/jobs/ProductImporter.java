@@ -1,6 +1,6 @@
 package com.dianastore.jobs;
 
-import com.dianastore.jobs.repository.ProductRepository;
+import com.dianastore.repository.ProductRepository;
 import com.opencsv.CSVReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,15 +19,15 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 @Component
-public class ProductService {
+public class ProductImporter {
 
-    private static final Logger log = LoggerFactory.getLogger(ProductService.class);
+    private static final Logger log = LoggerFactory.getLogger(ProductImporter.class);
     private final ProductRepository productRepo;
 
     @Value("${feed.location:./feeds}")
     private String feedLocation;
 
-    public ProductService(ProductRepository productRepo) {
+    public ProductImporter(ProductRepository productRepo) {
         this.productRepo = productRepo;
     }
 

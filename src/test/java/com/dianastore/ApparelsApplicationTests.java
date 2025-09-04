@@ -1,4 +1,4 @@
-package com.dianastore.jobs;
+package com.dianastore;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

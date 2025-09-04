@@ -1,4 +1,4 @@
-package com.dianastore.jobs.entities;
+package com.dianastore.entities;
 
 import jakarta.persistence.*;
 import java.sql.Timestamp;

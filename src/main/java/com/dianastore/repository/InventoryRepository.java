@@ -1,6 +1,6 @@
-package com.dianastore.jobs.repository;
+package com.dianastore.repository;
 
-import com.dianastore.jobs.entities.Inventory;
+import com.dianastore.entities.Inventory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
