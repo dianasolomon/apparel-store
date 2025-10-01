@@ -45,4 +45,6 @@ public interface PriceRepository extends JpaRepository<Price, Long> {
     @Transactional
     @Query(value = "UPDATE prices SET marked_for_delete = TRUE WHERE feed_id <> :feedId", nativeQuery = true)
     void markNotInFeedIdAsMarkedForDelete(@Param("feedId") Long feedId);
+
+    Price findByCountryCodeAndSku(String countryCode, String sku);
 }

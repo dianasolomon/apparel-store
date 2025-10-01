@@ -1,6 +1,8 @@
 package com.dianastore.repository;
 
 import com.dianastore.entities.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -12,44 +14,47 @@ import java.sql.Timestamp;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-
     @Modifying
     @Transactional
     @Query(value = """
-            INSERT INTO products
-            (country_code, sku, short_description, long_description, image_url, product_name,
-             category, size, colour, style, notes, out_of_stock, feed_id, creation_timestamp, modified_timestamp)
-            VALUES (:countryCode, :sku, :shortDescription, :longDescription, :imageUrl, :productName,
-                    :category, :size, :colour, :style, :notes, FALSE, :feedId, :now, :now)
-            ON DUPLICATE KEY UPDATE
-            short_description = IF(VALUES(short_description) <> short_description, VALUES(short_description), short_description),
-            long_description  = IF(VALUES(long_description)  <> long_description,  VALUES(long_description),  long_description),
-            image_url         = IF(VALUES(image_url)         <> image_url,         VALUES(image_url),         image_url),
-            product_name      = IF(VALUES(product_name)      <> product_name,      VALUES(product_name),      product_name),
-            category          = IF(VALUES(category)          <> category,          VALUES(category),          category),
-            size              = IF(VALUES(size)              <> size,              VALUES(size),              size),
-            colour            = IF(VALUES(colour)            <> colour,            VALUES(colour),            colour),
-            style             = IF(VALUES(style)             <> style,             VALUES(style),             style),
-            notes             = IF(VALUES(notes)             <> notes,             VALUES(notes),             notes),
-            out_of_stock   = FALSE,
-            modified_timestamp = IF(
-                (VALUES(short_description) <> short_description) OR
-                (VALUES(long_description)  <> long_description)  OR
-                (VALUES(image_url)         <> image_url)         OR
-                (VALUES(product_name)      <> product_name)      OR
-                (VALUES(category)          <> category)          OR
-                (VALUES(size)              <> size)              OR
-                (VALUES(colour)            <> colour)            OR
-                (VALUES(style)             <> style)             OR
-                (VALUES(notes)             <> notes)             OR
-                (out_of_stock = TRUE),
-                :now, modified_timestamp),
-            feed_id = :feedId
-            """, nativeQuery = true)
+    INSERT INTO products
+    (country_code, sku, short_description, medium_description, long_description, image_url, product_name,
+     category, size, colour, style, notes, out_of_stock, feed_id, creation_timestamp, modified_timestamp)
+    VALUES (:countryCode, :sku, :shortDescription, :mediumDescription, :longDescription, :imageUrl, :productName,
+            :category, :size, :colour, :style, :notes, FALSE, :feedId, :now, :now)
+    ON DUPLICATE KEY UPDATE
+    short_description = COALESCE(VALUES(short_description), short_description),
+    medium_description = COALESCE(VALUES(medium_description), medium_description),
+    long_description  = COALESCE(VALUES(long_description), long_description),
+    image_url         = COALESCE(VALUES(image_url), image_url),
+    product_name      = COALESCE(VALUES(product_name), product_name),
+    category          = COALESCE(VALUES(category), category),
+    size              = COALESCE(VALUES(size), size),
+    colour            = COALESCE(VALUES(colour), colour),
+    style             = COALESCE(VALUES(style), style),
+    notes             = COALESCE(VALUES(notes), notes),
+    out_of_stock = FALSE,
+    modified_timestamp = IF(
+        (VALUES(short_description) IS NOT NULL AND VALUES(short_description) <> short_description) OR
+        (VALUES(medium_description) IS NOT NULL AND VALUES(medium_description) <> medium_description) OR
+        (VALUES(long_description)  IS NOT NULL AND VALUES(long_description)  <> long_description)  OR
+        (VALUES(image_url)         IS NOT NULL AND VALUES(image_url)         <> image_url)         OR
+        (VALUES(product_name)      IS NOT NULL AND VALUES(product_name)      <> product_name)      OR
+        (VALUES(category)          IS NOT NULL AND VALUES(category)          <> category)          OR
+        (VALUES(size)              IS NOT NULL AND VALUES(size)              <> size)              OR
+        (VALUES(colour)            IS NOT NULL AND VALUES(colour)            <> colour)            OR
+        (VALUES(style)             IS NOT NULL AND VALUES(style)             <> style)             OR
+        (VALUES(notes)             IS NOT NULL AND VALUES(notes)             <> notes)             OR
+        (out_of_stock = TRUE),
+        :now, modified_timestamp),
+    feed_id = :feedId
+    """, nativeQuery = true)
+
     void insertOrUpdateNative(
             @Param("countryCode") String countryCode,
             @Param("sku") String sku,
             @Param("shortDescription") String shortDescription,
+            @Param("mediumDescription") String mediumDescription,
             @Param("longDescription") String longDescription,
             @Param("imageUrl") String imageUrl,
             @Param("productName") String productName,
@@ -66,4 +71,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Transactional
     @Query(value = "UPDATE products SET out_of_stock = TRUE WHERE feed_id <> :feedId", nativeQuery = true)
     void markMissingAsOutOfStock(@Param("feedId") Long feedId);
+
+    Page<Product> findByCountryCodeAndCategoryContainingIgnoreCase(String countryCode, String category, Pageable pageable);
+
 }
