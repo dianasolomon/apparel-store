@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -73,5 +74,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     void markMissingAsOutOfStock(@Param("feedId") Long feedId);
 
     Page<Product> findByCountryCodeAndCategoryContainingIgnoreCase(String countryCode, String category, Pageable pageable);
+    @Query("SELECT p FROM Product p " +
+            "WHERE (:region IS NULL OR p.countryCode = :region) " +
+            "AND (:category IS NULL OR p.category LIKE %:category%) " +
+            "AND (:size IS NULL OR p.size = :size) " +
+            "AND (:colour IS NULL OR p.colour LIKE %:colour%)")
+    List<Product> findByFilters(
+            @Param("region") String region,
+            @Param("category") String category,
+            @Param("size") String size,
+            @Param("colour") String colour,
+            Pageable pageable
+    );
 
 }

@@ -30,35 +30,32 @@ public class PLPService {
         this.priceRepo = priceRepo;
         this.inventoryRepo = inventoryRepo;
     }
-    public List<ProductPLPResponse> getProducts(String region, String category, String size, String colour, int page) {
-        String normalizedRegion = region.toUpperCase();
+    public List<ProductPLPResponse> getProducts(String region, String category, String size, String colour, int page, int limit) {
 
-        log.info("Fetching products for region={}, category={}, size={}, colour={}, page={}",
-                normalizedRegion, category, size, colour, page);
+        String normalizedRegion = (region != null && !region.isEmpty()) ? region.toUpperCase() : null;
 
-        Page<Product> products = productRepo.findByCountryCodeAndCategoryContainingIgnoreCase(
-                normalizedRegion, category, PageRequest.of(page, 20)
+        log.info("Fetching products for region={}, category={}, size={}, colour={}, page={}, limit={}",
+                normalizedRegion, category, size, colour, page, limit);
+
+        List<Product> products = productRepo.findByFilters(
+                normalizedRegion,
+                category,
+                size,  // <-- keep as String
+                colour,
+                PageRequest.of(page, limit)
         );
 
-        // Split colour into list if multiple values provided
-        // Normalize colour filters to lowercase
-        List<String> colourFilters = (colour != null && !colour.isEmpty())
-                ? List.of(colour.split(","))
-                .stream()
-                .map(String::toLowerCase)  // ✅ convert filters to lowercase
-                .collect(Collectors.toList())
-                : null;
-
         List<ProductPLPResponse> result = products.stream()
-                .filter(p -> (size == null || p.getSize().equalsIgnoreCase(size))) // ✅ size filter
-                .filter(p -> (colourFilters == null || colourFilters.contains(p.getColour().toLowerCase()))) // ✅ colour filter
                 .map(p -> {
-                    Inventory inv = inventoryRepo.findByCountryCodeAndSku(normalizedRegion, p.getSku());
-                    if (inv == null || inv.getStock() <= 0) {
-                        return null;
-                    }
+                    Inventory inv = (normalizedRegion != null)
+                            ? inventoryRepo.findByCountryCodeAndSku(normalizedRegion, p.getSku())
+                            : null;
 
-                    Price price = priceRepo.findByCountryCodeAndSku(normalizedRegion, p.getSku());
+                    if (inv != null && inv.getStock() <= 0) return null;
+
+                    Price price = (normalizedRegion != null)
+                            ? priceRepo.findByCountryCodeAndSku(normalizedRegion, p.getSku())
+                            : null;
 
                     return new ProductPLPResponse(
                             p.getSku(),
@@ -79,4 +76,7 @@ public class PLPService {
         log.info("✅ Final products returned to client: {}", result.size());
         return result;
     }
+
+
+
 }
