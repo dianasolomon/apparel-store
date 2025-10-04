@@ -46,7 +46,10 @@ public class InventoryImporter {
         long feedId = Instant.now().toEpochMilli();
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Path sourcePath = Path.of(feedLocation, "inventory_feed_5000.csv");
-
+        if (!Files.exists(sourcePath)) {
+            log.info("No inventory feed found at {} — skipping import. Database remains unchanged.", sourcePath);
+            return;
+        }
         try (
                 Reader fileReader = Files.newBufferedReader(sourcePath);
                 CSVReader csvReader = new CSVReader(fileReader)

@@ -45,7 +45,10 @@ public class ProductImporter {
         long feedId = Instant.now().toEpochMilli();
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Path sourcePath = Path.of(feedLocation, "product_feed_5000.csv");
-
+        if (!Files.exists(sourcePath)) {
+            log.info("No inventory feed found at {} — skipping import. Database remains unchanged.", sourcePath);
+            return;
+        }
         try (Reader fileReader = Files.newBufferedReader(sourcePath);
              CSVReader csvReader = new CSVReader(fileReader)) {
 
@@ -59,29 +62,35 @@ public class ProductImporter {
                     String countryCode = safe(row.length > 0 ? row[0] : null);
                     String sku = safe(row.length > 1 ? row[1] : null);
                     String shortDescription = safe(row.length > 2 ? row[2] : null);
-                    String longDescription = safe(row.length > 3 ? row[3] : null);
-                    String imageUrl = safe(row.length > 4 ? row[4] : null);
-                    String productName = safe(row.length > 5 ? row[5] : null);
-                    String category = safe(row.length > 6 ? row[6] : null);
-                    String size = safe(row.length > 7 ? row[7] : null);
-                    String colour = safe(row.length > 8 ? row[8] : null);
-                    String style = safe(row.length > 9 ? row[9] : null);
-                    String notes = safe(row.length > 10 ? row[10] : null);
+                    String mediumDescription = safe(row.length > 3 ? row[3] : null);
+                    String longDescription = safe(row.length > 4 ? row[4] : null);
+                    String imageUrl = safe(row.length > 5 ? row[5] : null);
+                    String productName = safe(row.length > 6 ? row[6] : null);
+                    String category = safe(row.length > 7 ? row[7] : null);
+                    String size = safe(row.length > 8 ? row[8] : null);
+                    String colour = safe(row.length > 9 ? row[9] : null);
+                    String style = safe(row.length > 10 ? row[10] : null);
+                    String notes = safe(row.length > 11 ? row[11] : null);
 
                     if (countryCode == null || sku == null) {
                         log.warn("Skipping row {}: missing countryCode or sku", rowNum);
                         continue;
                     }
+                    log.debug("Row {}: sku='{}' mediumDescription len={} preview='{}'",
+                            rowNum, sku,
+                            mediumDescription == null ? 0 : mediumDescription.length(),
+                            mediumDescription == null ? "null" :
+                                    (mediumDescription.length() > 100 ? mediumDescription.substring(0,100) + "..." : mediumDescription));
 
                     productRepo.insertOrUpdateNative(
                             countryCode, sku,
-                            shortDescription, longDescription, imageUrl, productName,
+                            shortDescription,mediumDescription, longDescription, imageUrl, productName,
                             category, size, colour, style, notes,
                             feedId, now
                     );
 
                 } catch (Exception ex) {
-                    log.warn("Skipping row {} due to error: {}", rowNum, ex.getMessage());
+                    log.warn("Skipping row {} due to error: {}", rowNum, ex);
                 }
             }
 

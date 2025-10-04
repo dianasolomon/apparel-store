@@ -23,7 +23,7 @@ public class Product {
     @Column(name = "short_description", length = 255)
     private String shortDescription;
 
-    @Column(name = "medium_description", length = 500)
+    @Column(name = "medium_description",  columnDefinition = "TEXT")
     private String mediumDescription;
 
     @Lob
