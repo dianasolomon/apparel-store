@@ -15,6 +15,8 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
+    Product findBySku(String sku);
+
     @Modifying
     @Transactional
     @Query(value = """
@@ -87,4 +89,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
+    Product findByCountryCodeAndSku(String countryCode, String sku);
 }
