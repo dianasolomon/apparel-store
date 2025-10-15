@@ -39,4 +39,7 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Transactional
     @Query(value = "UPDATE inventory SET marked_for_delete = TRUE WHERE feed_id <> :feedId", nativeQuery = true)
     void markNotInFeedIdAsMarkedForDelete(@Param("feedId") Long feedId);
+
+    Inventory findByCountryCodeAndSku(String countryCode, String sku);
+
 }
