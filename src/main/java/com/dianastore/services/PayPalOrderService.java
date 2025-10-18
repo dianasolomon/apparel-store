@@ -1,10 +1,11 @@
 package com.dianastore.services;
 
 import com.dianastore.config.PayPalConfig;
+import com.dianastore.entities.PaymentEntry;
+import com.dianastore.entities.PaymentTransaction;
+import com.dianastore.repository.PaymentEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -16,10 +17,15 @@ public class PayPalOrderService {
 
     @Autowired
     private PayPalAuthService authService;
+
     @Autowired
     private PayPalConfig config;
+
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private PaymentEntryRepository paymentEntryRepo;
 
     public Map<String, Object> createOrder(String amount) {
         String url = config.getBaseUrl() + "/v2/checkout/orders";
@@ -40,7 +46,36 @@ public class PayPalOrderService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-        return restTemplate.postForEntity(url, entity, Map.class).getBody();
+
+        // ✅ Call PayPal API to create order
+        Map<String, Object> response = restTemplate.postForEntity(url, entity, Map.class).getBody();
+
+        // ✅ Extract PayPal order ID
+        String orderId = (String) response.get("id");
+
+        // ✅ Create PaymentEntry (parent)
+        PaymentEntry paymentEntry = PaymentEntry.builder()
+                .orderId(orderId)
+                .paymentMethod("PayPal")
+                .status("CREATED")
+                .build();
+
+        // ✅ Create initial PaymentTransaction (child)
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .transactionId(orderId) // initial transaction uses orderId; update later with PayPal transaction ID
+                .eventType("CREATED")
+                .status("CREATED")
+                .amount(Double.parseDouble(amount))
+                .currency("USD")
+                .paymentEntry(paymentEntry) // link child → parent
+                .build();
+
+        // ✅ Add child to parent's transaction list
+        paymentEntry.getTransactions().add(transaction);
+
+        // ✅ Save parent — cascades to child automatically
+        paymentEntryRepo.save(paymentEntry);
+
+        return response;
     }
 }
-

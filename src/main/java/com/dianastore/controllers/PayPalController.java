@@ -15,7 +15,6 @@ public class PayPalController {
     @Autowired private PayPalAuthorizationService authorizationService;
     @Autowired private PayPalCaptureService captureService;
     @Autowired private PayPalRefundService refundService;
-
     // 1️⃣ Create Order
     @PostMapping("/create-order")
     public ResponseEntity<?> createOrder(@RequestParam String amount) {
@@ -29,28 +28,27 @@ public class PayPalController {
     }
 
     // 3️⃣ Capture Authorized Payment
-    @PostMapping("/capture/{authorizationId}")
-    public ResponseEntity<?> capturePayment(@PathVariable String authorizationId) {
-        return ResponseEntity.ok(captureService.capturePayment(authorizationId));
+    @PostMapping("/capture-by-order/{orderId}")
+    public ResponseEntity<?> captureByOrder(@PathVariable String orderId) {
+        return ResponseEntity.ok(captureService.capturePayment(orderId));
     }
 
+
     // 4️⃣ Refund
-    @PostMapping("/refund/{captureId}")
-    public ResponseEntity<?> refundPayment(
-            @PathVariable String captureId,
-            @RequestParam(required = false) String amount) {
-        return ResponseEntity.ok(refundService.refundPayment(captureId, amount));
+    @PostMapping("/refund-by-order/{orderId}")
+    public ResponseEntity<?> refundByOrder(@PathVariable String orderId, @RequestParam(required = false) String amount) {
+        return ResponseEntity.ok(refundService.refundPayment(orderId, amount));
     }
+
 
 
     // ✅ Handle success redirect from PayPal
     @GetMapping("/success")
     public ResponseEntity<?> onSuccess(@RequestParam("token") String orderId) {
-        // PayPal appends ?token=<ORDER_ID> when returning
         var authorization = authorizationService.authorizePayment(orderId);
         return ResponseEntity.ok(Map.of(
                 "message", "Payment authorized successfully!",
-                "authorization", authorization
+                "authorization",authorization
         ));
     }
 
