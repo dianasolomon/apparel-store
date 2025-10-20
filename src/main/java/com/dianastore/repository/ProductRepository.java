@@ -1,5 +1,6 @@
 package com.dianastore.repository;
 
+import com.dianastore.entities.Price;
 import com.dianastore.entities.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
