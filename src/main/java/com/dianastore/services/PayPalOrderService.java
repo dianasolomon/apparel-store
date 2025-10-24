@@ -3,12 +3,13 @@ package com.dianastore.services;
 import com.dianastore.config.PayPalConfig;
 import com.dianastore.entities.PaymentEntry;
 import com.dianastore.entities.PaymentTransaction;
-import com.dianastore.repository.PaymentEntryRepository;
+import com.dianastore.repository.PaymentTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +26,7 @@ public class PayPalOrderService {
     private RestTemplate restTemplate;
 
     @Autowired
-    private PaymentEntryRepository paymentEntryRepo;
+    private PaymentTransactionRepository paymentTransactionRepo;
 
     public Map<String, Object> createOrder(String amount) {
         String url = config.getBaseUrl() + "/v2/checkout/orders";
@@ -51,30 +52,35 @@ public class PayPalOrderService {
         Map<String, Object> response = restTemplate.postForEntity(url, entity, Map.class).getBody();
 
         // ✅ Extract PayPal order ID
-        String orderId = (String) response.get("id");
+        String paypalOrderId = (String) response.get("id");
 
-        // ✅ Create PaymentEntry (parent)
-        PaymentEntry paymentEntry = PaymentEntry.builder()
-                .orderId(orderId)
-                .paymentMethod("PayPal")
+        PaymentTransaction txn = PaymentTransaction.builder()
+                .internalOrderId("INT-" + System.currentTimeMillis())
+                .paypalOrderId(paypalOrderId)
+                .transactionId("TXN-" + System.currentTimeMillis())
+                .paymentMethod("PAYPAL")
+                .currency("USD")
+                .totalAmount(Double.valueOf(amount))
                 .status("CREATED")
+                .createdAt(LocalDateTime.now())
                 .build();
 
-        // ✅ Create initial PaymentTransaction (child)
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .transactionId(orderId) // initial transaction uses orderId; update later with PayPal transaction ID
+
+        // ✅ Create initial PaymentEntry (child)
+        PaymentEntry entry = PaymentEntry.builder()
+                .paypalOrderId(paypalOrderId)
                 .eventType("CREATED")
                 .status("CREATED")
                 .amount(Double.parseDouble(amount))
                 .currency("USD")
-                .paymentEntry(paymentEntry) // link child → parent
+                .createdAt(LocalDateTime.now())
+                .paymentTransaction(txn) // link to parent
                 .build();
 
-        // ✅ Add child to parent's transaction list
-        paymentEntry.getTransactions().add(transaction);
+        // ✅ Link child to parent
+        txn.getPaymentEntries().add(entry);
 
-        // ✅ Save parent — cascades to child automatically
-        paymentEntryRepo.save(paymentEntry);
+        paymentTransactionRepo.save(txn);
 
         return response;
     }

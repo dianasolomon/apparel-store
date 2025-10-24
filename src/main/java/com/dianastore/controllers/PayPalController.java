@@ -39,17 +39,17 @@ public class PayPalController {
     public ResponseEntity<?> refundByOrder(@PathVariable String orderId, @RequestParam(required = false) String amount) {
         return ResponseEntity.ok(refundService.refundPayment(orderId, amount));
     }
-
-
-
     // ✅ Handle success redirect from PayPal
     @GetMapping("/success")
     public ResponseEntity<?> onSuccess(@RequestParam("token") String orderId) {
-        var authorization = authorizationService.authorizePayment(orderId);
-        return ResponseEntity.ok(Map.of(
-                "message", "Payment authorized successfully!",
-                "authorization",authorization
-        ));
+        try {
+            // Authorize the payment using the orderId (PayPal token)
+            Map<String, Object> result = authorizationService.authorizePayment(orderId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Payment authorization failed: " + e.getMessage());
+        }
     }
 
     // ❌ Handle cancel redirect
