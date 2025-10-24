@@ -1,7 +1,11 @@
 package com.dianastore.entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "payment_transactions")
@@ -15,13 +19,21 @@ public class PaymentTransaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String transactionId;  // PayPal/Razorpay transaction ID
-    private String eventType;      // CREATED, AUTHORIZED, CAPTURED, REFUNDED
-    private String status;         // SUCCESS, FAILED, PENDING
-    private Double amount;         // Transaction amount
-    private String currency;       // Currency code, e.g., USD, INR
-    // Link back to parent PaymentEntry
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_entry_id", nullable = false)
-    private PaymentEntry paymentEntry;
+
+    private String internalOrderId;
+    @Column(unique = true)
+    private String paypalOrderId;
+
+    private String transactionId;
+    private String paymentMethod;
+    private String currency;
+    private Double totalAmount;
+    private String status;
+    private LocalDateTime createdAt;
+
+    // ✅ One transaction can have many payment entries
+    @OneToMany(mappedBy = "paymentTransaction", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<PaymentEntry> paymentEntries = new ArrayList<>();
 }

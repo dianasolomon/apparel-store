@@ -3,16 +3,15 @@ package com.dianastore.services;
 import com.dianastore.config.PayPalConfig;
 import com.dianastore.entities.PaymentEntry;
 import com.dianastore.entities.PaymentTransaction;
-import com.dianastore.repository.PaymentEntryRepository;
 import com.dianastore.repository.PaymentTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class PayPalRefundService {
@@ -27,36 +26,29 @@ public class PayPalRefundService {
     private RestTemplate restTemplate;
 
     @Autowired
-    private PaymentEntryRepository entryRepo;
-
-    @Autowired
-    private PaymentTransactionRepository transactionRepo;
+    private PaymentTransactionRepository paymentTransactionRepo;
 
     /**
-     * Refunds a payment — full or partial.
-     * @param orderId Order ID to identify which capture to refund
-     * @param amount Optional refund amount (if null or empty → full refund)
-     * @return PayPal refund response
+     * Refunds a payment (full or partial).
+     * @param orderId Internal order ID (links to PaymentTransaction)
+     * @param amount  Optional refund amount (null = full refund)
+     * @return PayPal API response map
      */
     public Map<String, Object> refundPayment(String orderId, String amount) {
-        // ✅ Step 1: Find PaymentEntry
-        Optional<PaymentEntry> entryOpt = entryRepo.findByOrderId(orderId);
-        if (entryOpt.isEmpty()) {
-            throw new RuntimeException("No payment entry found for orderId: " + orderId);
-        }
 
-        PaymentEntry entry = entryOpt.get();
+        // ✅ Step 1: Find the PaymentTransaction (parent)
+        PaymentTransaction paymentTransaction = paymentTransactionRepo.findByPaypalOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("PaymentTransaction not found for orderId: " + orderId));
 
-        // ✅ Step 2: Get the latest CAPTURED transaction
-        PaymentTransaction capturedTx = entry.getTransactions()
-                .stream()
-                .filter(tx -> "CAPTURED".equalsIgnoreCase(tx.getEventType()))
-                .reduce((first, second) -> second) // get last captured
-                .orElseThrow(() -> new RuntimeException("No captured transaction found for orderId: " + orderId));
+        // ✅ Step 2: Get the latest CAPTURED PaymentEntry
+        PaymentEntry capturedEntry = paymentTransaction.getPaymentEntries().stream()
+                .filter(e -> "CAPTURED".equalsIgnoreCase(e.getEventType()))
+                .reduce((first, second) -> second)
+                .orElseThrow(() -> new RuntimeException("No CAPTURED entry found for orderId: " + orderId));
 
-        String captureId = capturedTx.getTransactionId();
-        if (captureId == null || captureId.isEmpty()) {
-            throw new RuntimeException("No captureId found for orderId: " + orderId);
+        String captureId = capturedEntry.getPaypalOrderId();
+        if (captureId == null || captureId.isBlank()) {
+            throw new RuntimeException("No valid captureId found for orderId: " + orderId);
         }
 
         // ✅ Step 3: Prepare PayPal refund API URL
@@ -66,39 +58,48 @@ public class PayPalRefundService {
         headers.setBearerAuth(authService.getAccessToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
 
+        // ✅ Step 4: Prepare request body
         String body = (amount != null && !amount.isBlank())
                 ? String.format("""
                     {
                       "amount": {
                         "value": "%s",
-                        "currency_code": "USD"
+                        "currency_code": "%s"
                       }
                     }
-                """, amount)
+                """, amount, capturedEntry.getCurrency())
                 : "{}";
 
         HttpEntity<String> entity = new HttpEntity<>(body, headers);
 
-        // ✅ Step 4: Send refund request to PayPal
-        Map<String, Object> response = restTemplate.postForEntity(url, entity, Map.class).getBody();
+        // ✅ Step 5: Call PayPal refund API
+        ResponseEntity<Map> responseEntity = restTemplate.postForEntity(url, entity, Map.class);
+        Map<String, Object> response = responseEntity.getBody();
 
-        // ✅ Step 5: Extract refund status
-        String status = (String) response.get("status");
+        if (response == null) {
+            throw new RuntimeException("Empty response from PayPal refund API");
+        }
 
-        // ✅ Step 6: Save refund transaction in DB
-        PaymentTransaction refundTx = PaymentTransaction.builder()
-                .transactionId((String) response.get("id")) // PayPal refund ID
+        String refundId = (String) response.get("id");
+        String refundStatus = (String) response.get("status");
+
+        // ✅ Step 6: Create new PaymentEntry for REFUNDED event
+        PaymentEntry refundEntry = PaymentEntry.builder()
+                .paypalOrderId(orderId)
                 .eventType("REFUNDED")
-                .status(status != null ? status : "REFUNDED")
-                .amount(capturedTx.getAmount())
-                .currency(capturedTx.getCurrency())
-                .paymentEntry(entry)
+                .status(refundStatus != null ? refundStatus : "REFUNDED")
+                .amount(amount != null ? Double.parseDouble(amount) : capturedEntry.getAmount())
+                .currency(capturedEntry.getCurrency())
+                .createdAt(LocalDateTime.now())
+                .paymentTransaction(paymentTransaction)
                 .build();
 
-        entry.getTransactions().add(refundTx);
-        entry.setStatus(refundTx.getStatus());
+        // ✅ Step 7: Attach to parent and update status
+        paymentTransaction.getPaymentEntries().add(refundEntry);
+        paymentTransaction.setStatus(refundEntry.getStatus());
 
-        entryRepo.save(entry); // cascade saves new transaction too
+        // ✅ Step 8: Save parent (cascade saves child)
+        paymentTransactionRepo.save(paymentTransaction);
 
         return response;
     }

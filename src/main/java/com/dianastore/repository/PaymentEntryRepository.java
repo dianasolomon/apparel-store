@@ -10,5 +10,4 @@ import java.util.Optional;
 public interface PaymentEntryRepository extends JpaRepository<PaymentEntry, Long> {
 
     // Optional helper method to find a payment entry by PayPal order ID
-    Optional<PaymentEntry> findByOrderId(String orderId);
 }

@@ -1,10 +1,9 @@
 package com.dianastore.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "payment_entries")
@@ -19,14 +18,16 @@ public class PaymentEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String orderId;   // This links to the Order table (one order = one payment entry)
+    private String paypalOrderId;     // PayPal’s own order ID
+    private String paypalTransactionId;      // PayPal authorization ID
+    private String eventType;         // AUTHORIZED, CAPTURED, REFUNDED
+    private String status;            // COMPLETED, FAILED, etc.
+    private Double amount;
+    private String currency;
+    private LocalDateTime createdAt;
 
-    private String paymentMethod;  // PayPal, Razorpay, etc.
-    private String status;         // The current payment status (e.g., COMPLETED, PENDING)
-
-    @OneToMany(mappedBy = "paymentEntry", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<PaymentTransaction> transactions = new ArrayList<>();
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_transaction_id", nullable = false)
+    @JsonBackReference
+    private PaymentTransaction paymentTransaction;
 }
