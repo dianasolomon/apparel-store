@@ -7,7 +7,9 @@ import com.dianastore.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class CartService {
@@ -22,6 +24,9 @@ public class CartService {
     }
 
     public Cart saveCart(Cart cart) {
+        if(cart.getId()==null){
+            cart.setExternalReference(generateExternalReference());
+        }
         if (cart.getItems() != null) {
             cart.getItems().forEach(item -> {
                 Product product = productRepository.findById(item.getProduct().getId())
@@ -31,6 +36,12 @@ public class CartService {
             });
         }
         return cartRepository.save(cart);
+    }
+
+    private String generateExternalReference() {
+        String datePart = LocalDate.now().toString().replace("-", "");
+        String randomPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "SHOP-" + datePart + "-" + randomPart;
     }
 
     // Safe update using Cart itself

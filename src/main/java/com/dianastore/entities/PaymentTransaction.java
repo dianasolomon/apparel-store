@@ -1,5 +1,6 @@
 package com.dianastore.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -36,4 +37,18 @@ public class PaymentTransaction {
     @JsonManagedReference
     @Builder.Default
     private List<PaymentEntry> paymentEntries = new ArrayList<>();
+
+    @OneToOne(mappedBy = "paymentTransaction")
+    @JsonBackReference // ✅ stop recursion back to Cart
+    private Cart cart;
+
+
+
+    @OneToMany(mappedBy = "paymentTransaction", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    @Builder.Default
+    private List<Order> orders = new ArrayList<>();
+
+
+
 }
