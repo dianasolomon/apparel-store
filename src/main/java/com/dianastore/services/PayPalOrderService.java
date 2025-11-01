@@ -1,8 +1,10 @@
 package com.dianastore.services;
 
 import com.dianastore.config.PayPalConfig;
+import com.dianastore.entities.Cart;
 import com.dianastore.entities.PaymentEntry;
 import com.dianastore.entities.PaymentTransaction;
+import com.dianastore.repository.CartRepository;
 import com.dianastore.repository.PaymentTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -28,7 +30,10 @@ public class PayPalOrderService {
     @Autowired
     private PaymentTransactionRepository paymentTransactionRepo;
 
-    public Map<String, Object> createOrder(String amount) {
+    @Autowired
+    private CartRepository cartRepository;
+
+    public Map<String, Object> createOrder(String amount, Cart cart) {
         String url = config.getBaseUrl() + "/v2/checkout/orders";
 
         Map<String, Object> payload = Map.of(
@@ -37,10 +42,11 @@ public class PayPalOrderService {
                         "amount", Map.of("currency_code", "USD", "value", amount)
                 )),
                 "application_context", Map.of(
-                        "return_url", "http://localhost:8080/api/paypal/success",
-                        "cancel_url", "http://localhost:8080/api/paypal/cancel"
+                        "return_url", "http://localhost:8080/" + cart.getMarket() + "/carts/" + cart.getId() + "/payment/success",
+                        "cancel_url", "http://localhost:8080/" + cart.getMarket() + "/carts/" + cart.getId() + "/payment/cancel"
                 )
         );
+
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(authService.getAccessToken());
@@ -63,6 +69,7 @@ public class PayPalOrderService {
                 .totalAmount(Double.valueOf(amount))
                 .status("CREATED")
                 .createdAt(LocalDateTime.now())
+                .cart(cart)
                 .build();
 
 
@@ -79,9 +86,9 @@ public class PayPalOrderService {
 
         // ✅ Link child to parent
         txn.getPaymentEntries().add(entry);
-
+        cart.setPaymentTransaction(txn);
         paymentTransactionRepo.save(txn);
-
+        cartRepository.save(cart);
         return response;
     }
 }

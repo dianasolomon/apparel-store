@@ -1,5 +1,7 @@
 package com.dianastore.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +28,8 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
+    private String externalReference;
+
     @ManyToOne
     @JoinColumn(name = "shipping_address_id")
     private Address shippingAddress;
@@ -38,9 +42,11 @@ public class Order {
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "payment_transaction_id")
+    @JsonBackReference
     private PaymentTransaction paymentTransaction;
+
 
     private LocalDateTime createdAt;
 }
