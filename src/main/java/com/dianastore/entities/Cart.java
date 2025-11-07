@@ -13,7 +13,6 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Cart {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,6 +26,8 @@ public class Cart {
     @Enumerated(EnumType.STRING)
     private CartStatus status = CartStatus.ACTIVE;
 
+    private String externalReference;
+
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<CartItem> items;
@@ -38,6 +39,12 @@ public class Cart {
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "billing_address_id")
     private Address billingAddress;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "payment_transaction_id")
+    @JsonManagedReference // ✅ serialize from Cart → PaymentTransaction
+    private PaymentTransaction paymentTransaction;
+
 
 
 }

@@ -5,6 +5,7 @@ import com.dianastore.repository.OrderRepository;
 import com.dianastore.repository.PaymentTransactionRepository;
 import com.dianastore.services.CartService;
 import com.dianastore.services.OrderService;
+import com.dianastore.services.PayPalAuthorizationService;
 import com.dianastore.services.PayPalOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,8 @@ public class CartController {
     private PaymentTransactionRepository paymentTransactionRepository;
     @Autowired
     private OrderService orderService;
+    @Autowired
+    private PayPalAuthorizationService payPalAuthorizationService;
     @GetMapping
     public List<Cart> getAllCarts() {
         return cartService.cartRepository.findAll();
@@ -124,7 +127,7 @@ public class CartController {
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
 
         // Call PayPal API
-        Map<String, Object> response = payPalOrderService.createOrder(String.format("%.2f", cart.getTotalAmount()));
+        Map<String, Object> response = payPalOrderService.createOrder(String.format("%.2f", cart.getTotalAmount()),cart);
 
 
         // Extract approval link
@@ -148,30 +151,49 @@ public class CartController {
     }
     @PostMapping("/{cartId}/placeorder")
     public ResponseEntity<Order> placeOrder(
-            @PathVariable Long cartId,
-            @RequestParam String transactionId) {
-
-        Cart cart = cartService.getCart(cartId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
-
-        PaymentTransaction transaction = paymentTransactionRepository.findByTransactionId(transactionId)
-                .orElseThrow(() -> new RuntimeException("Invalid transaction ID: " + transactionId));
-
-        if (!"AUTHORIZED".equalsIgnoreCase(transaction.getStatus())) {
-            throw new RuntimeException("Payment not authorized yet. Cannot place order.");
-        }
-
+            @PathVariable Long cartId) {
         Order order = orderService.createOrderFromCart(cartId);
-
-        transaction.setInternalOrderId(String.valueOf(order.getId()));
-        paymentTransactionRepository.save(transaction);
-
-        order.setPaymentTransaction(transaction);
-        orderRepository.save(order);
-
-        cartService.saveCart(cart);
-
         return ResponseEntity.ok(order);
+    }
+    @GetMapping("/{cartId}/payment/success")
+    public ResponseEntity<?> handlePayPalSuccess(
+            @PathVariable String market,
+            @PathVariable Long cartId,
+            @RequestParam("token") String paypalOrderId) {
+        try {
+            Map<String, Object> result = payPalAuthorizationService.authorizePayment(paypalOrderId);
+
+            PaymentTransaction transaction = paymentTransactionRepository
+                    .findByPaypalOrderId(paypalOrderId)
+                    .orElseThrow(() -> new RuntimeException("Transaction not found"));
+
+            transaction.setStatus("APPROVED");
+            paymentTransactionRepository.save(transaction);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Payment successful",
+                    "cartId", cartId,
+                    "paypalOrderId", paypalOrderId,
+                    "transactionStatus", transaction.getStatus()
+            ));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(
+                    Map.of("error", "Payment authorization failed", "details", e.getMessage())
+            );
+        }
+    }
+
+    @GetMapping("/{cartId}/payment/cancel")
+    public ResponseEntity<?> onPaymentCancel(
+            @PathVariable String market,
+            @PathVariable Long cartId) {
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Payment was cancelled by the user",
+                "cartId", cartId
+        ));
     }
 
 
