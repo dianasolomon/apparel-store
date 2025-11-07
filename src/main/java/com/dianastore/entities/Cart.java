@@ -44,7 +44,4 @@ public class Cart {
     @JoinColumn(name = "payment_transaction_id")
     @JsonManagedReference // ✅ serialize from Cart → PaymentTransaction
     private PaymentTransaction paymentTransaction;
-
-
-
 }

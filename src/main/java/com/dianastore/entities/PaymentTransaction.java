@@ -29,6 +29,7 @@ public class PaymentTransaction {
     private String paymentMethod;
     private String currency;
     private Double totalAmount;
+    @Column(length = 50)
     private String status;
     private LocalDateTime createdAt;
 
@@ -42,13 +43,9 @@ public class PaymentTransaction {
     @JsonBackReference // ✅ stop recursion back to Cart
     private Cart cart;
 
-
-
     @OneToMany(mappedBy = "paymentTransaction", cascade = CascadeType.ALL)
     @JsonManagedReference
     @Builder.Default
     private List<Order> orders = new ArrayList<>();
-
-
 
 }
