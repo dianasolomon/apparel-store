@@ -45,8 +45,7 @@ public class PayPalRefundService {
                 .filter(e -> "CAPTURED".equalsIgnoreCase(e.getEventType()))
                 .reduce((first, second) -> second)
                 .orElseThrow(() -> new RuntimeException("No CAPTURED entry found for orderId: " + orderId));
-
-        String captureId = capturedEntry.getPaypalOrderId();
+        String captureId = capturedEntry.getPaypalTransactionId();
         if (captureId == null || captureId.isBlank()) {
             throw new RuntimeException("No valid captureId found for orderId: " + orderId);
         }
@@ -87,6 +86,7 @@ public class PayPalRefundService {
         PaymentEntry refundEntry = PaymentEntry.builder()
                 .paypalOrderId(orderId)
                 .eventType("REFUNDED")
+                .paypalTransactionId(refundId)
                 .status(refundStatus != null ? refundStatus : "REFUNDED")
                 .amount(amount != null ? Double.parseDouble(amount) : capturedEntry.getAmount())
                 .currency(capturedEntry.getCurrency())

@@ -24,7 +24,6 @@ public class PayPalAuthorizationService {
     @Autowired
     private PayPalConfig config;
 
-
     @Autowired
     private CartRepository cartRepository;
 
@@ -36,13 +35,12 @@ public class PayPalAuthorizationService {
 
     public Map<String, Object> authorizePayment(String orderId) {
         String url = config.getBaseUrl() + "/v2/checkout/orders/" + orderId + "/authorize";
-
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(authService.getAccessToken());
+        String token = authService.getAccessToken();
+        System.out.println("PayPal Access Token: " + token);
+        headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
-
         HttpEntity<String> entity = new HttpEntity<>("{}", headers);
-
         // ✅ Step 1: Call PayPal API
         ResponseEntity<Map> responseEntity = restTemplate.postForEntity(url, entity, Map.class);
         Map<String, Object> response = responseEntity.getBody();
@@ -82,11 +80,60 @@ public class PayPalAuthorizationService {
 
         // ✅ Step 5: Attach entry to parent transaction
         paymentTransaction.getPaymentEntries().add(paymentEntry);
-        paymentTransaction.setStatus("AUTHORIZED"); // update parent status
 
         // ✅ Step 6: Save parent (cascades to child)
         paymentTransactionRepo.save(paymentTransaction);
 
         return response;
     }
+
+    public Map<String, Object> voidAuthorization(String orderId) {
+        // ✅ Step 1: Find parent transaction
+        PaymentTransaction txn = paymentTransactionRepo.findByPaypalOrderId(orderId)
+                .orElseThrow(() -> new RuntimeException("PaymentTransaction not found for orderId: " + orderId));
+
+        // ✅ Step 2: Find latest AUTHORIZED entry
+        PaymentEntry authorizedEntry = txn.getPaymentEntries().stream()
+                .filter(e -> "AUTHORIZED".equalsIgnoreCase(e.getEventType()))
+                .reduce((first, second) -> second)
+                .orElseThrow(() -> new RuntimeException("No AUTHORIZED entry found for orderId: " + orderId));
+
+        String authorizationId = authorizedEntry.getPaypalTransactionId();
+        if (authorizationId == null || authorizationId.isBlank()) {
+            throw new RuntimeException("Missing authorizationId for orderId: " + orderId);
+        }
+
+        // ✅ Step 3: Build PayPal API URL
+        String url = config.getBaseUrl() + "/v2/payments/authorizations/" + authorizationId + "/void";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(authService.getAccessToken());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<String> entity = new HttpEntity<>("{}", headers);
+
+        // ✅ Step 4: Call PayPal API
+        ResponseEntity<Map> responseEntity = restTemplate.postForEntity(url, entity, Map.class);
+        Map<String, Object> response = responseEntity.getBody();
+
+        // ✅ Step 5: Create PaymentEntry for VOIDED
+        PaymentEntry voidEntry = PaymentEntry.builder()
+                .paypalOrderId(orderId)
+                .paypalTransactionId(authorizationId)
+                .eventType("VOIDED")
+                .status("VOIDED")
+                .amount(authorizedEntry.getAmount())
+                .currency(authorizedEntry.getCurrency())
+                .createdAt(LocalDateTime.now())
+                .paymentTransaction(txn)
+                .build();
+
+        txn.getPaymentEntries().add(voidEntry);
+        txn.setStatus("VOIDED");
+
+        paymentTransactionRepo.save(txn);
+
+        return response;
+    }
+
 }

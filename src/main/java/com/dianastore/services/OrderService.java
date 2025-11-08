@@ -42,7 +42,7 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Payment transaction not found in DB"));
 
         // ✅ 5. Ensure payment succeeded
-        if (!"APPROVED".equalsIgnoreCase(txn.getStatus()) &&
+        if (!"AUTHORIZED".equalsIgnoreCase(txn.getStatus()) &&
                 !"CAPTURED".equalsIgnoreCase(txn.getStatus())) {
             throw new RuntimeException("Payment not approved or captured");
         }

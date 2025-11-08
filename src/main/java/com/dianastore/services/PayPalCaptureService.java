@@ -65,6 +65,7 @@ public class PayPalCaptureService {
 
         // ✅ Step 6: Create a new PaymentEntry for CAPTURED event
         PaymentEntry capturedEntry = PaymentEntry.builder()
+                .paypalTransactionId(captureId)
                 .paypalOrderId(orderId)
                 .eventType("CAPTURED")
                 .status("COMPLETED")
@@ -76,7 +77,7 @@ public class PayPalCaptureService {
 
         // ✅ Step 7: Attach new entry to transaction and update status
         paymentTransaction.getPaymentEntries().add(capturedEntry);
-        paymentTransaction.setStatus("COMPLETED");
+        paymentTransaction.setStatus("CAPTURED");
 
         // ✅ Step 8: Save parent transaction (cascades to entries)
         paymentTransactionRepo.save(paymentTransaction);
