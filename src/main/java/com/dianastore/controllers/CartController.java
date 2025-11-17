@@ -1,19 +1,11 @@
 package com.dianastore.controllers;
 import com.dianastore.entities.*;
-import com.dianastore.repository.AddressRepository;
-import com.dianastore.repository.OrderRepository;
-import com.dianastore.repository.PaymentTransactionRepository;
 import com.dianastore.services.CartService;
 import com.dianastore.services.OrderService;
-import com.dianastore.services.PayPalAuthorizationService;
-import com.dianastore.services.PayPalOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/{market}/carts")
@@ -21,21 +13,9 @@ public class CartController {
 
     @Autowired
     private CartService cartService;
-
-    @Autowired
-    private AddressRepository addressRepository;
-
-    @Autowired
-    private PayPalOrderService payPalOrderService;
-
-    @Autowired
-    private OrderRepository orderRepository;
-    @Autowired
-    private PaymentTransactionRepository paymentTransactionRepository;
     @Autowired
     private OrderService orderService;
-    @Autowired
-    private PayPalAuthorizationService payPalAuthorizationService;
+
     @GetMapping
     public List<Cart> getAllCarts() {
         return cartService.cartRepository.findAll();
@@ -79,47 +59,12 @@ public class CartController {
     public ResponseEntity<Cart> addOrUpdateAddress(
             @PathVariable Long cartId,
             @RequestBody Address address) {
-
-        Cart cart = cartService.getCart(cartId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
-
-        Address targetAddress;
-
-        // Determine if we're updating existing address
-        if ("SHIPPING".equalsIgnoreCase(address.getType())) {
-            Address existing = cart.getShippingAddress();
-            if (existing != null) {
-                existing.setStreet(address.getStreet());
-                existing.setCity(address.getCity());
-                existing.setState(address.getState());
-                existing.setCountry(address.getCountry());
-                existing.setPostalCode(address.getPostalCode());
-                existing.setShopperId(address.getShopperId());
-                targetAddress = addressRepository.save(existing);
-            } else {
-                targetAddress = addressRepository.save(address);
-                cart.setShippingAddress(targetAddress);
-            }
-        } else if ("BILLING".equalsIgnoreCase(address.getType())) {
-            Address existing = cart.getBillingAddress();
-            if (existing != null) {
-                existing.setStreet(address.getStreet());
-                existing.setCity(address.getCity());
-                existing.setState(address.getState());
-                existing.setCountry(address.getCountry());
-                existing.setPostalCode(address.getPostalCode());
-                existing.setShopperId(address.getShopperId());
-                targetAddress = addressRepository.save(existing);
-            } else {
-                targetAddress = addressRepository.save(address);
-                cart.setBillingAddress(targetAddress);
-            }
-        } else {
+        if (address.getType() == null || address.getType().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-
-        Cart updatedCart = cartService.saveCart(cart);
+        Cart updatedCart = cartService.addOrUpdateAddress(cartId, address);
         return ResponseEntity.ok(updatedCart);
+
     }
     @PostMapping("/{cartId}/placeorder")
     public ResponseEntity<Order> placeOrder(
@@ -127,7 +72,4 @@ public class CartController {
         Order order = orderService.createOrderFromCart(cartId);
         return ResponseEntity.ok(order);
     }
-
-
-
 }

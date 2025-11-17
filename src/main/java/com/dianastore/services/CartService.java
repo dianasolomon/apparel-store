@@ -1,7 +1,9 @@
 package com.dianastore.services;
 
+import com.dianastore.entities.Address;
 import com.dianastore.entities.Cart;
 import com.dianastore.entities.Product;
+import com.dianastore.repository.AddressRepository;
 import com.dianastore.repository.CartRepository;
 import com.dianastore.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,9 @@ public class CartService {
 
     @Autowired
     private ProductRepository productRepository;
+    @Autowired
+    private AddressRepository addressRepository;
+
     public Optional<Cart> getCart(Long cartId) {
         return cartRepository.findById(cartId);
     }
@@ -71,4 +76,37 @@ public class CartService {
     public void deleteCart(Long cartId) {
         cartRepository.deleteById(cartId);
     }
+
+    public Cart addOrUpdateAddress(Long cartId, Address address) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        Address targetAddress;
+        if ("SHIPPING".equalsIgnoreCase(address.getType())) {
+            targetAddress = updateOrCreateAddress(cart.getShippingAddress(), address);
+            cart.setShippingAddress(targetAddress);
+        } else if ("BILLING".equalsIgnoreCase(address.getType())) {
+            targetAddress = updateOrCreateAddress(cart.getBillingAddress(), address);
+            cart.setBillingAddress(targetAddress);
+        } else {
+            throw new IllegalArgumentException("Invalid address type");
+        }
+
+        return cartRepository.save(cart);
+    }
+
+    private Address updateOrCreateAddress(Address existing, Address newAddress) {
+        if (existing != null) {
+            existing.setStreet(newAddress.getStreet());
+            existing.setCity(newAddress.getCity());
+            existing.setState(newAddress.getState());
+            existing.setCountry(newAddress.getCountry());
+            existing.setPostalCode(newAddress.getPostalCode());
+            existing.setShopperId(newAddress.getShopperId());
+            return addressRepository.save(existing);
+        } else {
+            return addressRepository.save(newAddress);
+        }
+    }
+
 }

@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface AddressRepository extends JpaRepository<Address, Long> {
 
-    // Custom query methods
+    // Custom query methods-
 }
