@@ -3,6 +3,7 @@ package com.dianastore.controllers;
 import com.dianastore.services.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 @RestController
@@ -12,6 +13,7 @@ public class PaymentController {
     private PaymentService paymentService;
 
     @PostMapping("/{id}/payment")
+    @PreAuthorize("hasAuthority('SCOPE_apparel-store')")
     public ResponseEntity<?> makePayment(@PathVariable Long id) {
         try {
             if (id == null) {
@@ -40,7 +42,10 @@ public class PaymentController {
                     "details", e.getMessage()
             ));
         }
+
     }
+
+
 
     @GetMapping("/{cartId}/payment/cancel")
     public ResponseEntity<?> onPaymentCancel(
