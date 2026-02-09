@@ -4,6 +4,7 @@ import com.dianastore.dto.UpdateOrderStatusRequest;
 import com.dianastore.services.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -12,8 +13,8 @@ import java.util.Map;
 public class OrderController {
     @Autowired
     private OrderService orderService;
-
     @PutMapping("/{orderId}/status")
+    @PreAuthorize("hasAuthority('SCOPE_apparel-store')")
     public ResponseEntity<?> updateOrderStatus(
             @PathVariable Long orderId,@RequestBody UpdateOrderStatusRequest request) {
 
@@ -22,6 +23,5 @@ public class OrderController {
         }
         return orderService.updateOrderStatus(orderId, request.getStatus());
     }
-
 
 }

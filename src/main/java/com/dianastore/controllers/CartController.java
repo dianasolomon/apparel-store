@@ -4,6 +4,7 @@ import com.dianastore.services.CartService;
 import com.dianastore.services.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -44,7 +45,9 @@ public class CartController {
         cartService.deleteCart(id);
         return ResponseEntity.ok("Cart deleted successfully");
     }
+
     @PostMapping("/{id}/checkout")
+    @PreAuthorize("hasAuthority('SCOPE_apparel-store')")
     public ResponseEntity<Cart> checkoutCart(@PathVariable Long id) {
         return cartService.getCart(id)
                 .map(cart -> {
@@ -67,9 +70,12 @@ public class CartController {
 
     }
     @PostMapping("/{cartId}/placeorder")
+    @PreAuthorize("hasAuthority('SCOPE_apparel-store')")
     public ResponseEntity<Order> placeOrder(
             @PathVariable Long cartId) {
+
         Order order = orderService.createOrderFromCart(cartId);
         return ResponseEntity.ok(order);
     }
+
 }
